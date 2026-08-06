@@ -228,21 +228,23 @@ ANIMATED_TRUCK_HTML = """<div style="background: #FFFDF5; border: 3px solid #1E2
 </div>
 </div>"""
 
-# --- FILE UPLOADERS ---
+# --- FILE UPLOADERS WITH EXPLICIT KEYS ---
 col1, col2 = st.columns(2)
 
 with col1:
     template_files = st.file_uploader(
         "1. Target Myntra Templates (.xlsx)", 
         type=["xlsx"], 
-        accept_multiple_files=True
+        accept_multiple_files=True,
+        key="template_uploader_key"
     )
 
 with col2:
     seller_files = st.file_uploader(
         "2. Source Seller Files (.xlsx, .csv)", 
         type=["xlsx", "csv"], 
-        accept_multiple_files=True
+        accept_multiple_files=True,
+        key="seller_uploader_key"
     )
 
 st.markdown("---")
