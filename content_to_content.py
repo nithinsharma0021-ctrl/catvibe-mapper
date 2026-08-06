@@ -3,7 +3,10 @@ import pandas as pd
 import openpyxl
 import re
 import io
+import os
+import gc
 import zipfile
+import tempfile
 import warnings
 
 warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
@@ -19,7 +22,6 @@ html, body, [class*="css"] {
     background-color: #FAFAFA;
 }
 
-/* Indian Truck Art Header Container */
 .truck-header-card {
     background: #FFFDF5;
     border: 3px solid #1E293B;
@@ -31,7 +33,6 @@ html, body, [class*="css"] {
     overflow: hidden;
 }
 
-/* Top Truck Art Chevron Bar */
 .truck-art-border {
     height: 10px;
     background: repeating-linear-gradient(
@@ -65,7 +66,6 @@ html, body, [class*="css"] {
     letter-spacing: 2px;
 }
 
-/* Horn OK Please Style Badge */
 .horn-ok-badge {
     display: inline-flex;
     align-items: center;
@@ -84,7 +84,6 @@ html, body, [class*="css"] {
     margin-top: 8px;
 }
 
-/* Truck Bumper Button */
 div.stButton > button:first-child {
     background: #FF9933;
     color: #1E293B;
@@ -128,6 +127,13 @@ def clean_id(val):
 def normalize_col(name):
     name = str(name).strip().lower()
     return re.sub(r'[^a-z0-9]', '', name)
+
+def human_size(num_bytes):
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if num_bytes < 1024:
+            return f"{num_bytes:.1f}{unit}"
+        num_bytes /= 1024
+    return f"{num_bytes:.1f}TB"
 
 # 3. TRUCK ART HEADER HTML
 HEADER_HTML = """<div class="truck-header-card">
@@ -224,19 +230,33 @@ col1, col2 = st.columns(2)
 
 with col1:
     template_files = st.file_uploader(
-        "1. Target Myntra Templates (.xlsx)", 
-        type=["xlsx"], 
+        "1. Target Myntra Templates (.xlsx)",
+        type=["xlsx"],
         accept_multiple_files=True,
         key="tmpl_up"
     )
 
 with col2:
     seller_files = st.file_uploader(
-        "2. Source Seller Files (.xlsx, .csv)", 
-        type=["xlsx", "csv"], 
+        "2. Source Seller Files (.xlsx, .csv)",
+        type=["xlsx", "csv"],
         accept_multiple_files=True,
         key="sell_up"
     )
+
+# Soft warning if uploaded payload is large — free-tier hosts (~1GB RAM) can
+# crash mid-request on big Excel files, which shows up to the browser as a
+# generic Axios 503 rather than a Streamlit error.
+SIZE_WARN_THRESHOLD = 60 * 1024 * 1024  # 60MB combined
+if template_files or seller_files:
+    total_bytes = sum(f.size for f in (template_files or [])) + sum(f.size for f in (seller_files or []))
+    if total_bytes > SIZE_WARN_THRESHOLD:
+        st.warning(
+            f"⚠️ Combined upload size is {human_size(total_bytes)}. Large Excel files can "
+            "exceed free-tier hosting memory limits and cause upload/processing failures "
+            "(often shown as a generic 503 error). If this run fails, try splitting the "
+            "templates into smaller batches."
+        )
 
 st.markdown("---")
 
@@ -244,180 +264,237 @@ st.markdown("---")
 if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_files:
     anim_placeholder = st.empty()
     anim_placeholder.markdown(ANIMATED_TRUCK_HTML, unsafe_allow_html=True)
-    
+
     master_style_dict = {}
-    
-    # 5. PARSE SELLER FILES
-    for uploaded_seller in seller_files:
-        try:
-            if uploaded_seller.name.endswith('.csv'):
-                df = pd.read_csv(uploaded_seller)
-                style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df.columns[0])
-                for _, row in df.iterrows():
-                    sid = clean_id(row[style_col])
-                    if sid and sid != 'nan':
-                        if sid not in master_style_dict: master_style_dict[sid] = {}
-                        for col in df.columns:
-                            if col != style_col and pd.notna(row[col]):
-                                master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
-                continue
+    parse_errors = []
 
-            xls = pd.ExcelFile(uploaded_seller)
-            sheet_name = 'Style Sheet' if 'Style Sheet' in xls.sheet_names else ('Styles' if 'Styles' in xls.sheet_names else xls.sheet_names[0])
-            df_raw = pd.read_excel(uploaded_seller, sheet_name=sheet_name, header=None)
-            
-            is_complex_header = False
-            for r in range(min(4, len(df_raw))):
-                row_str = " ".join([str(x).lower() for x in df_raw.iloc[r].dropna().values])
-                if 'field names' in row_str or 'current inputs' in row_str or 'correct inputs' in row_str or 'new inputs' in row_str:
-                    is_complex_header = True
-                    break
+    try:
+        # 5. PARSE SELLER FILES — one at a time, freeing memory after each
+        for uploaded_seller in seller_files:
+            try:
+                if uploaded_seller.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_seller, dtype=str)
+                    style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df.columns[0])
+                    for _, row in df.iterrows():
+                        sid = clean_id(row[style_col])
+                        if sid and sid != 'nan':
+                            if sid not in master_style_dict: master_style_dict[sid] = {}
+                            for col in df.columns:
+                                if col != style_col and pd.notna(row[col]):
+                                    master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
+                    del df
+                    gc.collect()
+                    continue
 
-            if is_complex_header:
-                start_row = 4 if len(df_raw) > 4 else 2
-                for r in range(start_row, len(df_raw)):
-                    row = df_raw.iloc[r]
-                    raw_sid = row[0]
-                    if pd.isna(raw_sid): continue
-                    sid = clean_id(raw_sid)
-                    if not sid or sid == 'nan': continue
-                    
-                    if sid not in master_style_dict: master_style_dict[sid] = {}
-                    
-                    if 10 < len(row) and pd.notna(row[10]):
-                        attr_name = str(row[10]).strip()
-                        val_curr_spec = row[11] if 11 < len(row) else None
-                        val_new_spec = row[12] if 12 < len(row) else None
-                        
-                        target_val = None
-                        if pd.notna(val_new_spec) and str(val_new_spec).strip().lower() not in ['nan', '']:
-                            target_val = str(val_new_spec).strip()
-                        elif pd.notna(val_curr_spec) and str(val_curr_spec).strip().lower() not in ['nan', '']:
-                            target_val = str(val_curr_spec).strip()
-                            
-                        if attr_name and target_val:
-                            master_style_dict[sid][map_attribute_header(attr_name)] = target_val
+                xls = pd.ExcelFile(uploaded_seller)
+                sheet_name = 'Style Sheet' if 'Style Sheet' in xls.sheet_names else ('Styles' if 'Styles' in xls.sheet_names else xls.sheet_names[0])
+                df_raw = pd.read_excel(uploaded_seller, sheet_name=sheet_name, header=None, dtype=str)
+                xls.close()
 
-                    paired_cols = [(4, 5, 4), (6, 7, 6), (8, 9, 8), (13, 14, 13), (15, 16, 15)]
-                    for pair_curr, pair_new, header_idx in paired_cols:
-                        if header_idx < df_raw.shape[1]:
-                            h_val = df_raw.iloc[2, header_idx] if pd.notna(df_raw.iloc[2, header_idx]) else df_raw.iloc[1, header_idx]
-                            if pd.notna(h_val):
-                                attr_header = str(h_val).strip()
-                                v_new = row[pair_new] if pair_new < len(row) else None
-                                v_curr = row[pair_curr] if pair_curr < len(row) else None
-                                
-                                final_v = None
-                                if pd.notna(v_new) and str(v_new).strip().lower() not in ['nan', '']:
-                                    final_v = str(v_new).strip()
-                                elif pd.notna(v_curr) and str(v_curr).strip().lower() not in ['nan', '']:
-                                    final_v = str(v_curr).strip()
-                                    
-                                if attr_header and final_v:
-                                    master_style_dict[sid][map_attribute_header(attr_header)] = final_v
+                is_complex_header = False
+                for r in range(min(4, len(df_raw))):
+                    row_str = " ".join([str(x).lower() for x in df_raw.iloc[r].dropna().values])
+                    if 'field names' in row_str or 'current inputs' in row_str or 'correct inputs' in row_str or 'new inputs' in row_str:
+                        is_complex_header = True
+                        break
 
-            else:
-                df_simple = pd.read_excel(uploaded_seller, sheet_name=sheet_name)
-                style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df_simple.columns[0])
-                
-                for _, row in df_simple.iterrows():
-                    sid = clean_id(row[style_col])
-                    if not sid or sid == 'nan': continue
-                    if sid not in master_style_dict: master_style_dict[sid] = {}
-                    
-                    for col in df_simple.columns:
-                        if col != style_col and pd.notna(row[col]):
-                            val = str(row[col]).strip()
-                            if val and val.lower() != 'nan':
-                                master_style_dict[sid][map_attribute_header(col)] = val
-
-        except Exception as e:
-            st.error(f"Error parsing {uploaded_seller.name}: {e}")
-
-    # 6. INJECT INTO TEMPLATES & AUDIT LOG
-    zip_buffer = io.BytesIO()
-    total_mapped = 0
-    total_branded = 0
-    audit_records = []
-    
-    with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:
-        for uploaded_template in template_files:
-            wb = openpyxl.load_workbook(uploaded_template)
-            mapped_count = 0
-            brand_injection_count = 0
-
-            for sheet_name in wb.sheetnames:
-                if sheet_name == 'masterdata': continue
-                ws = wb[sheet_name]
-                
-                col_map = {normalize_col(cell.value): idx for idx, cell in enumerate(ws[1], 1) if cell.value}
-                target_style_col = col_map.get('styleid')
-                brand_col_idx = col_map.get('brand')
-                
-                if target_style_col:
-                    for row in range(2, ws.max_row + 1):
-                        raw_sid = ws.cell(row=row, column=target_style_col).value
-                        if not raw_sid: continue
+                if is_complex_header:
+                    start_row = 4 if len(df_raw) > 4 else 2
+                    for r in range(start_row, len(df_raw)):
+                        row = df_raw.iloc[r]
+                        raw_sid = row[0]
+                        if pd.isna(raw_sid): continue
                         sid = clean_id(raw_sid)
-                        
-                        if sid in master_style_dict:
-                            source_data = master_style_dict[sid]
-                            for mapped_attr, val in source_data.items():
-                                if mapped_attr in col_map:
-                                    final_val = str(val).strip()
-                                    
-                                    if mapped_attr == 'productdisplayname' and brand_col_idx:
-                                        target_brand = str(ws.cell(row=row, column=brand_col_idx).value).strip()
-                                        if target_brand and target_brand.lower() not in ['none', 'nan', '']:
-                                            if target_brand.lower() not in final_val.lower():
-                                                final_val = f"{target_brand} {final_val}"
-                                                brand_injection_count += 1
-                                    
-                                    ws.cell(row=row, column=col_map[mapped_attr]).value = final_val
-                                    mapped_count += 1
-                                    
-                                    orig_col_header = ws.cell(row=1, column=col_map[mapped_attr]).value
-                                    audit_records.append({
-                                        "Template File": uploaded_template.name,
-                                        "Sheet Name": sheet_name,
-                                        "Style ID": sid,
-                                        "Attribute Mapped": orig_col_header,
-                                        "Updated Value": final_val
-                                    })
-            
-            total_mapped += mapped_count
-            total_branded += brand_injection_count
-            
-            wb_buffer = io.BytesIO()
-            wb.save(wb_buffer)
-            zip_file.writestr(f"C2C_Mapped_{uploaded_template.name}", wb_buffer.getvalue())
+                        if not sid or sid == 'nan': continue
 
-    # Clear animation container
-    anim_placeholder.empty()
+                        if sid not in master_style_dict: master_style_dict[sid] = {}
 
-    # 7. RESULTS & AUDIT TABLE DISPLAY
-    st.success(f"✅ Extracted updates for **{len(master_style_dict)}** unique style IDs from seller files.")
-    st.info(f"🎯 **C 2 C Mapping Complete!** Successfully filled **{total_mapped}** attribute cells into catalog template(s).")
-    if total_branded > 0:
-        st.warning(f"🛡️ Auto-injected Brand Name into **{total_branded}** titles.")
+                        if 10 < len(row) and pd.notna(row[10]):
+                            attr_name = str(row[10]).strip()
+                            val_curr_spec = row[11] if 11 < len(row) else None
+                            val_new_spec = row[12] if 12 < len(row) else None
 
-    if audit_records:
-        df_audit = pd.DataFrame(audit_records)
-        with st.expander("📊 Detailed Mapping Audit Log (Line-by-Line)", expanded=True):
-            st.dataframe(df_audit, use_container_width=True)
+                            target_val = None
+                            if pd.notna(val_new_spec) and str(val_new_spec).strip().lower() not in ['nan', '']:
+                                target_val = str(val_new_spec).strip()
+                            elif pd.notna(val_curr_spec) and str(val_curr_spec).strip().lower() not in ['nan', '']:
+                                target_val = str(val_curr_spec).strip()
 
-    if len(template_files) == 1:
-        wb_buffer.seek(0)
-        st.download_button(
-            label="💾 Download Updated C 2 C Template",
-            data=wb_buffer.getvalue(),
-            file_name=f"C2C_Mapped_{template_files[0].name}",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    else:
-        st.download_button(
-            label="📦 Download All C 2 C Templates (.zip)",
-            data=zip_buffer.getvalue(),
-            file_name="C2C_Mapped_Templates.zip",
-            mime="application/zip"
-        )
+                            if attr_name and target_val:
+                                master_style_dict[sid][map_attribute_header(attr_name)] = target_val
+
+                        paired_cols = [(4, 5, 4), (6, 7, 6), (8, 9, 8), (13, 14, 13), (15, 16, 15)]
+                        for pair_curr, pair_new, header_idx in paired_cols:
+                            if header_idx < df_raw.shape[1]:
+                                h_val = df_raw.iloc[2, header_idx] if pd.notna(df_raw.iloc[2, header_idx]) else df_raw.iloc[1, header_idx]
+                                if pd.notna(h_val):
+                                    attr_header = str(h_val).strip()
+                                    v_new = row[pair_new] if pair_new < len(row) else None
+                                    v_curr = row[pair_curr] if pair_curr < len(row) else None
+
+                                    final_v = None
+                                    if pd.notna(v_new) and str(v_new).strip().lower() not in ['nan', '']:
+                                        final_v = str(v_new).strip()
+                                    elif pd.notna(v_curr) and str(v_curr).strip().lower() not in ['nan', '']:
+                                        final_v = str(v_curr).strip()
+
+                                    if attr_header and final_v:
+                                        master_style_dict[sid][map_attribute_header(attr_header)] = final_v
+                else:
+                    df_simple = pd.read_excel(uploaded_seller, sheet_name=sheet_name, dtype=str)
+                    style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df_simple.columns[0])
+
+                    for _, row in df_simple.iterrows():
+                        sid = clean_id(row[style_col])
+                        if not sid or sid == 'nan': continue
+                        if sid not in master_style_dict: master_style_dict[sid] = {}
+
+                        for col in df_simple.columns:
+                            if col != style_col and pd.notna(row[col]):
+                                val = str(row[col]).strip()
+                                if val and val.lower() != 'nan':
+                                    master_style_dict[sid][map_attribute_header(col)] = val
+                    del df_simple
+
+                del df_raw
+                gc.collect()
+
+            except Exception as e:
+                parse_errors.append(f"{uploaded_seller.name}: {e}")
+
+        for err in parse_errors:
+            st.error(f"Error parsing {err}")
+
+        # 6. INJECT INTO TEMPLATES — write each workbook straight to a temp
+        # file on disk and stream it into the zip, instead of holding every
+        # workbook's bytes in RAM at the same time.
+        total_mapped = 0
+        total_branded = 0
+        audit_records = []
+        single_file_bytes = None
+        single_file_name = None
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            zip_path = os.path.join(tmpdir, "C2C_Mapped_Templates.zip")
+
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                for uploaded_template in template_files:
+                    try:
+                        wb = openpyxl.load_workbook(uploaded_template, keep_links=False)
+                        mapped_count = 0
+                        brand_injection_count = 0
+
+                        for sheet_name in wb.sheetnames:
+                            if sheet_name == 'masterdata': continue
+                            ws = wb[sheet_name]
+
+                            col_map = {normalize_col(cell.value): idx for idx, cell in enumerate(ws[1], 1) if cell.value}
+                            target_style_col = col_map.get('styleid')
+                            brand_col_idx = col_map.get('brand')
+
+                            if target_style_col:
+                                for row in range(2, ws.max_row + 1):
+                                    raw_sid = ws.cell(row=row, column=target_style_col).value
+                                    if not raw_sid: continue
+                                    sid = clean_id(raw_sid)
+
+                                    if sid in master_style_dict:
+                                        source_data = master_style_dict[sid]
+                                        for mapped_attr, val in source_data.items():
+                                            if mapped_attr in col_map:
+                                                final_val = str(val).strip()
+
+                                                if mapped_attr == 'productdisplayname' and brand_col_idx:
+                                                    target_brand = str(ws.cell(row=row, column=brand_col_idx).value).strip()
+                                                    if target_brand and target_brand.lower() not in ['none', 'nan', '']:
+                                                        if target_brand.lower() not in final_val.lower():
+                                                            final_val = f"{target_brand} {final_val}"
+                                                            brand_injection_count += 1
+
+                                                ws.cell(row=row, column=col_map[mapped_attr]).value = final_val
+                                                mapped_count += 1
+
+                                                orig_col_header = ws.cell(row=1, column=col_map[mapped_attr]).value
+                                                audit_records.append({
+                                                    "Template File": uploaded_template.name,
+                                                    "Sheet Name": sheet_name,
+                                                    "Style ID": sid,
+                                                    "Attribute Mapped": orig_col_header,
+                                                    "Updated Value": final_val
+                                                })
+
+                        total_mapped += mapped_count
+                        total_branded += brand_injection_count
+
+                        # Save this workbook straight to disk, add it to the
+                        # zip, then close and release it before the next one.
+                        out_name = f"C2C_Mapped_{uploaded_template.name}"
+                        out_path = os.path.join(tmpdir, out_name)
+                        wb.save(out_path)
+                        wb.close()
+                        del wb
+                        gc.collect()
+
+                        zip_file.write(out_path, arcname=out_name)
+
+                        if len(template_files) == 1:
+                            with open(out_path, "rb") as f:
+                                single_file_bytes = f.read()
+                            single_file_name = out_name
+
+                        os.remove(out_path)
+
+                    except Exception as e:
+                        st.error(f"Error processing template {uploaded_template.name}: {e}")
+
+            # Read the finished zip once, at the very end, only if needed
+            zip_bytes = None
+            if len(template_files) != 1:
+                with open(zip_path, "rb") as f:
+                    zip_bytes = f.read()
+
+        anim_placeholder.empty()
+
+        # 7. RESULTS & AUDIT TABLE DISPLAY
+        st.success(f"✅ Extracted updates for **{len(master_style_dict)}** unique style IDs from seller files.")
+        st.info(f"🎯 **C 2 C Mapping Complete!** Successfully filled **{total_mapped}** attribute cells into catalog template(s).")
+        if total_branded > 0:
+            st.warning(f"🛡️ Auto-injected Brand Name into **{total_branded}** titles.")
+
+        if audit_records:
+            df_audit = pd.DataFrame(audit_records)
+            with st.expander("📊 Detailed Mapping Audit Log (Line-by-Line)", expanded=True):
+                # Cap on-screen rendering for very large logs to keep the
+                # browser responsive; the download still contains everything.
+                if len(df_audit) > 5000:
+                    st.caption(f"Showing first 5,000 of {len(df_audit)} rows. Download the full CSV below.")
+                    st.dataframe(df_audit.head(5000), use_container_width=True)
+                else:
+                    st.dataframe(df_audit, use_container_width=True)
+
+                st.download_button(
+                    label="⬇️ Download Full Audit Log (CSV)",
+                    data=df_audit.to_csv(index=False).encode("utf-8"),
+                    file_name="C2C_Audit_Log.csv",
+                    mime="text/csv"
+                )
+
+        if len(template_files) == 1 and single_file_bytes is not None:
+            st.download_button(
+                label="💾 Download Updated C 2 C Template",
+                data=single_file_bytes,
+                file_name=single_file_name,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        elif zip_bytes is not None:
+            st.download_button(
+                label="📦 Download All C 2 C Templates (.zip)",
+                data=zip_bytes,
+                file_name="C2C_Mapped_Templates.zip",
+                mime="application/zip"
+            )
+
+    except Exception as e:
+        anim_placeholder.empty()
+        st.error(f"❌ Run failed: {e}")
+        st.caption("If this keeps happening on large files, try splitting your templates into smaller batches.")
