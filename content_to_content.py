@@ -11,7 +11,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 # 1. SMART HEADER TRANSLATOR
 def map_attribute_header(raw_attr):
     raw = str(raw_attr).lower().strip()
-    if 'display' in raw or 'title' in raw: return 'productdisplayname'
+    if 'display' in raw or 'title' in raw or raw == 'style name': return 'productdisplayname'
     if 'list view' in raw: return 'listviewname'
     if 'product detail' in raw: return 'productdetails'
     if 'size' in raw and 'fit' in raw: return 'sizeandfitdescription'
@@ -45,9 +45,10 @@ if st.button("🚀 Run Bulk Mapping") and template_files and seller_files:
         # 2. PARSE ALL SELLER FILES INTO MASTER DICTIONARY
         for uploaded_seller in seller_files:
             try:
+                # A. Handle CSV Files
                 if uploaded_seller.name.endswith('.csv'):
                     df = pd.read_csv(uploaded_seller)
-                    style_col = next((c for c in df.columns if 'style' in c.lower() and 'id' in c.lower()), df.columns[0])
+                    style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'style', 'id']), df.columns[0])
                     for _, row in df.iterrows():
                         sid = clean_id(row[style_col])
                         if sid and sid != 'nan':
@@ -57,63 +58,90 @@ if st.button("🚀 Run Bulk Mapping") and template_files and seller_files:
                                     master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
                     continue
 
+                # B. Handle Excel Files (Auto-Detect Multi-Row vs Simple Table)
                 xls = pd.ExcelFile(uploaded_seller)
                 sheet_name = 'Style Sheet' if 'Style Sheet' in xls.sheet_names else ('Styles' if 'Styles' in xls.sheet_names else xls.sheet_names[0])
-                df = pd.read_excel(uploaded_seller, sheet_name=sheet_name, header=None)
+                df_raw = pd.read_excel(uploaded_seller, sheet_name=sheet_name, header=None)
                 
-                h_row = 0 if 'field names' in str(df.iloc[0].values).lower() else 2
-                sh_row = h_row + 1
-                start_row = sh_row + 1
-                
-                headers = df.iloc[h_row].ffill().tolist()
-                sub_headers = df.iloc[sh_row].fillna('').tolist()
-                
-                combined_cols = []
-                for i, (h, sh) in enumerate(zip(headers, sub_headers)):
-                    if i == 0:
-                        combined_cols.append('style_id')
-                        continue
-                    h_str = str(h).strip().lower().replace('\n', ' ') if pd.notna(h) else ''
-                    sh_str = str(sh).strip().lower().replace('\n', ' ')
-                    if 'correct' in sh_str or 'new' in sh_str: combined_cols.append(f"{h_str}_new")
-                    else: combined_cols.append(f"{h_str}_{sh_str}")
+                # Check for multi-row complex header layout
+                is_complex_header = False
+                for r in range(min(4, len(df_raw))):
+                    row_str = " ".join([str(x).lower() for x in df_raw.iloc[r].dropna().values])
+                    if 'field names' in row_str or 'current inputs' in row_str or 'correct inputs' in row_str or 'new inputs' in row_str:
+                        is_complex_header = True
+                        break
+
+                if is_complex_header:
+                    # Multi-row seller header logic: STRICTLY PRIORITIZE NEW DATA
+                    h_row = 0 if 'field names' in " ".join([str(x).lower() for x in df_raw.iloc[0].dropna().values]) else 2
+                    sh_row = h_row + 1
+                    start_row = sh_row + 1
+                    
+                    headers = df_raw.iloc[h_row].ffill().tolist()
+                    sub_headers = df_raw.iloc[sh_row].fillna('').tolist()
+                    
+                    combined_cols = []
+                    for i, (h, sh) in enumerate(zip(headers, sub_headers)):
+                        if i == 0:
+                            combined_cols.append('style_id')
+                            continue
+                        h_str = str(h).strip().lower().replace('\n', ' ') if pd.notna(h) else ''
+                        sh_str = str(sh).strip().lower().replace('\n', ' ')
+                        # Mark columns based on current vs new distinction
+                        if 'correct' in sh_str or 'new' in sh_str: combined_cols.append(f"{h_str}_new")
+                        elif 'current' in sh_str: combined_cols.append(f"{h_str}_current")
+                        else: combined_cols.append(f"{h_str}_{sh_str}")
+                            
+                    df_data = df_raw.iloc[start_row:].copy()
+                    df_data.columns = combined_cols
+                    df_data['style_id'] = df_data['style_id'].ffill()
+                    
+                    attr_key_col = next((c for c in df_data.columns if c.startswith('attribute') and not c.endswith('new') and not c.endswith('current')), None)
+                    attr_val_col = next((c for c in df_data.columns if c.startswith('attribute') and c.endswith('new')), None)
+                    spec_col = next((c for c in df_data.columns if 'specification_new' in c), None)
+
+                    for _, row in df_data.iterrows():
+                        sid = clean_id(row['style_id'])
+                        if not sid or sid == 'nan': continue
+                        if sid not in master_style_dict: master_style_dict[sid] = {}
+
+                        # Multiline Cells (New Data Focus)
+                        if attr_key_col and spec_col and pd.notna(row[attr_key_col]) and pd.notna(row[spec_col]) and '\n' in str(row[attr_key_col]):
+                            attrs = str(row[attr_key_col]).split('\n')
+                            vals = str(row[spec_col]).split('\n')
+                            for i in range(min(len(attrs), len(vals))):
+                                key = map_attribute_header(attrs[i])
+                                val = vals[i].strip()
+                                if key and val and val.lower() != 'nan': master_style_dict[sid][key] = val
+
+                        # Multi-Row (New Data Focus)
+                        elif attr_key_col and attr_val_col and pd.notna(row[attr_key_col]) and pd.notna(row[attr_val_col]):
+                            k = str(row[attr_key_col]).strip()
+                            v = str(row[attr_val_col]).strip()
+                            if k.lower() != 'nan' and v.lower() != 'nan': master_style_dict[sid][map_attribute_header(k)] = v
+
+                        # Standard Columns (ONLY process _new columns, ignore _current)
+                        for col in df_data.columns:
+                            if col.endswith('_new') and col != spec_col and not col.startswith('attribute'):
+                                if pd.notna(row[col]) and str(row[col]).strip().lower() != 'nan':
+                                    key = map_attribute_header(col.replace('_new', ''))
+                                    master_style_dict[sid][key] = str(row[col]).strip()
+
+                else:
+                    # Simple Table (Direct Mapping of Singular True Values)
+                    df_simple = pd.read_excel(uploaded_seller, sheet_name=sheet_name)
+                    style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'style', 'id']), df_simple.columns[0])
+                    
+                    for _, row in df_simple.iterrows():
+                        sid = clean_id(row[style_col])
+                        if not sid or sid == 'nan': continue
+                        if sid not in master_style_dict: master_style_dict[sid] = {}
                         
-                df_data = df.iloc[start_row:].copy()
-                df_data.columns = combined_cols
-                df_data['style_id'] = df_data['style_id'].ffill() # Forward fill for merged/multi-row layouts
-                
-                cols_to_keep = ['style_id'] + [c for c in combined_cols if c.endswith('_new') or 'attribute' in c]
-                df_clean = df_data[cols_to_keep].dropna(subset=['style_id']).copy()
-
-                attr_key_col = next((c for c in df_clean.columns if c.startswith('attribute') and not c.endswith('new') and not c.endswith('inputs')), None)
-                attr_val_col = next((c for c in df_clean.columns if c.startswith('attribute') and c.endswith('new')), None)
-                spec_col = next((c for c in df_clean.columns if 'specification_new' in c), None)
-
-                for _, row in df_clean.iterrows():
-                    sid = clean_id(row['style_id'])
-                    if sid not in master_style_dict: master_style_dict[sid] = {}
-
-                    # A. Multiline Single-Cell Attributes
-                    if attr_key_col and spec_col and pd.notna(row[attr_key_col]) and pd.notna(row[spec_col]) and '\n' in str(row[attr_key_col]):
-                        attrs = str(row[attr_key_col]).split('\n')
-                        vals = str(row[spec_col]).split('\n')
-                        for i in range(min(len(attrs), len(vals))):
-                            key = map_attribute_header(attrs[i])
-                            val = vals[i].strip()
-                            if key and val and val.lower() != 'nan': master_style_dict[sid][key] = val
-
-                    # B. Multi-Row (Bewakoof format)
-                    elif attr_key_col and attr_val_col and pd.notna(row[attr_key_col]) and pd.notna(row[attr_val_col]):
-                        k = str(row[attr_key_col]).strip()
-                        v = str(row[attr_val_col]).strip()
-                        if k.lower() != 'nan' and v.lower() != 'nan': master_style_dict[sid][map_attribute_header(k)] = v
-
-                    # C. Standard Columns
-                    for col in df_clean.columns:
-                        if col.endswith('_new') and col != spec_col and not col.startswith('attribute'):
-                            if pd.notna(row[col]) and str(row[col]).strip().lower() != 'nan':
-                                key = map_attribute_header(col.replace('_new', ''))
-                                master_style_dict[sid][key] = str(row[col]).strip()
+                        for col in df_simple.columns:
+                            if col != style_col and pd.notna(row[col]):
+                                val = str(row[col]).strip()
+                                if val and val.lower() != 'nan':
+                                    master_style_dict[sid][map_attribute_header(col)] = val
 
             except Exception as e:
                 st.error(f"Error parsing {uploaded_seller.name}: {e}")
