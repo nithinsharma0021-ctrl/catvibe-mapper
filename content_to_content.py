@@ -8,91 +8,114 @@ import warnings
 
 warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
 
-# 1. PAGE CONFIG & MINIMALIST TRUCK ART STYLING
-st.set_page_config(page_title="C 2 C", layout="wide", page_icon="🚚")
+# 1. PAGE CONFIG & TRUCK ART STYLING
+st.set_page_config(page_title="C 2 C | Goods Carrier", layout="wide", page_icon="🚚")
 
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Yatra+One&family=Poppins:wght@400;500;600;700&display=swap');
+st.markdown("""<style>
+@import url('https://fonts.googleapis.com/css2?family=Yatra+One&family=Poppins:wght@400;600;700;800&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'Poppins', sans-serif;
-    }
+html, body, [class*="css"] {
+    font-family: 'Poppins', sans-serif;
+    background-color: #FAFAFA;
+}
 
-    /* Minimal Header Styling */
-    .brand-container {
-        display: flex;
-        align-items: center;
-        gap: 24px;
-        background: linear-gradient(135deg, #FFFDF9 0%, #FAFAF5 100%);
-        border: 2px solid #E5E7EB;
-        border-left: 6px solid #D97706;
-        padding: 20px 28px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
-    }
+/* Indian Truck Art Header Container */
+.truck-header-card {
+    background: #FFFDF5;
+    border: 3px solid #1E293B;
+    border-radius: 14px;
+    padding: 24px;
+    margin-bottom: 28px;
+    box-shadow: 6px 6px 0px #1E293B;
+    position: relative;
+    overflow: hidden;
+}
 
-    .brand-title {
-        font-family: 'Yatra One', cursive;
-        font-size: 3.5rem;
-        color: #111827;
-        margin: 0;
-        line-height: 1;
-        letter-spacing: 2px;
-    }
+/* Top Truck Art Chevron Bar */
+.truck-art-border {
+    height: 10px;
+    background: repeating-linear-gradient(
+        45deg,
+        #FF9933,
+        #FF9933 15px,
+        #E0115F 15px,
+        #E0115F 30px,
+        #FFD700 30px,
+        #FFD700 45px,
+        #0F766E 45px,
+        #0F766E 60px
+    );
+    margin: -24px -24px 20px -24px;
+    border-bottom: 2px solid #1E293B;
+}
 
-    .brand-badge {
-        display: inline-block;
-        background-color: #FEF3C7;
-        color: #B45309;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 700;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        padding: 4px 12px;
-        border-radius: 20px;
-        margin-top: 6px;
-        border: 1px solid #FCD34D;
-    }
+.brand-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+}
 
-    /* Minimalist File Uploader Container */
-    div[data-testid="stFileUploader"] {
-        background-color: #FFFFFF;
-        border: 2px dashed #D1D5DB;
-        border-radius: 10px;
-        padding: 12px;
-        transition: border-color 0.2s ease;
-    }
-    div[data-testid="stFileUploader"]:hover {
-        border-color: #D97706;
-    }
+.brand-title-text {
+    font-family: 'Yatra One', cursive;
+    font-size: 3.8rem;
+    color: #1E293B;
+    line-height: 1;
+    margin: 0;
+    text-shadow: 2px 2px 0px #FF9933;
+    letter-spacing: 2px;
+}
 
-    /* Action Button - Truck Art Accent */
-    div.stButton > button:first-child {
-        background: #D97706;
-        color: #FFFFFF;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 700;
-        font-size: 1rem;
-        text-transform: uppercase;
-        letter-spacing: 1.5px;
-        border: none;
-        padding: 0.8rem 2.4rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);
-        transition: all 0.2s ease-in-out;
-    }
+/* Horn OK Please Style Badge */
+.horn-ok-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #FFD700;
+    color: #1E293B;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 2px solid #1E293B;
+    box-shadow: 3px 3px 0px #1E293B;
+    margin-top: 8px;
+}
 
-    div.stButton > button:first-child:hover {
-        background: #B45309;
-        color: #FFFFFF;
-        box-shadow: 0 6px 16px rgba(180, 83, 9, 0.35);
-        transform: translateY(-1px);
-    }
-</style>
-""", unsafe_allow_html=True)
+/* Upload Card Styling */
+div[data-testid="stFileUploader"] {
+    background-color: #FFFFFF;
+    border: 2px solid #1E293B;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 4px 4px 0px #E2E8F0;
+}
+
+/* Truck Bumper Button */
+div.stButton > button:first-child {
+    background: #FF9933;
+    color: #1E293B;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 3px solid #1E293B;
+    padding: 0.85rem 2.5rem;
+    border-radius: 10px;
+    box-shadow: 5px 5px 0px #1E293B;
+    transition: all 0.15s ease-in-out;
+}
+
+div.stButton > button:first-child:hover {
+    background: #FFD700;
+    color: #1E293B;
+    box-shadow: 2px 2px 0px #1E293B;
+    transform: translate(3px, 3px);
+}
+</style>""", unsafe_allow_html=True)
 
 # 2. HELPER FUNCTIONS
 def map_attribute_header(raw_attr):
@@ -115,130 +138,95 @@ def normalize_col(name):
     name = str(name).strip().lower()
     return re.sub(r'[^a-z0-9]', '', name)
 
-# --- ANIMATED TRUCK FILLING & DRIVING HTML ---
-ANIMATED_TRUCK_HTML = """
-<div style="background: #FFFDF9; border: 2px solid #FEF3C7; border-left: 6px solid #D97706; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0; box-shadow: 0 4px 12px rgba(217,119,6,0.08);">
-    <style>
-        @keyframes driveBounce {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-3px); }
-            100% { transform: translateY(0px); }
-        }
-        @keyframes rotateSpokes {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes fillCargoDrop {
-            0% { opacity: 0; transform: translateY(-18px) scale(0.6); }
-            40% { opacity: 1; transform: translateY(0px) scale(1); }
-            100% { opacity: 1; transform: translateY(0px) scale(1); }
-        }
-        @keyframes roadDash {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -24; }
-        }
-        .truck-chassis { animation: driveBounce 0.4s infinite ease-in-out; }
-        .wheel-spoke { transform-box: fill-box; transform-origin: center; animation: rotateSpokes 0.5s infinite linear; }
-        .road-line-anim { animation: roadDash 0.25s infinite linear; }
-        .cargo-box-1 { animation: fillCargoDrop 1.2s infinite ease-out; }
-        .cargo-box-2 { animation: fillCargoDrop 1.2s infinite ease-out 0.4s; }
-        .cargo-box-3 { animation: fillCargoDrop 1.2s infinite ease-out 0.8s; }
-    </style>
-    
-    <svg width="240" height="110" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Road with Moving Dashes -->
-        <path d="M10 82 H190" stroke="#D97706" stroke-width="3" stroke-dasharray="8 6" class="road-line-anim" stroke-linecap="round"/>
-        
-        <!-- Animated Truck Body -->
-        <g class="truck-chassis">
-            <!-- Truck Driver Cab -->
-            <path d="M18 68 H58 V32 H38 L24 45 L18 68 Z" fill="#D97706" stroke="#92400E" stroke-width="2"/>
-            <path d="M26 47 H38 V36 L30 45 Z" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
-            
-            <!-- Cargo Truck Bed -->
-            <rect x="58" y="26" width="115" height="42" rx="4" fill="#1F2937" stroke="#111827" stroke-width="2"/>
-            
-            <!-- Traditional Truck Art Trims -->
-            <path d="M62 31 L72 37 L82 31 L92 37 L102 31 L112 37 L122 31 L132 37 L142 31 L152 37 L162 31" stroke="#EC4899" stroke-width="1.5"/>
-            <path d="M62 63 L72 57 L82 63 L92 57 L102 63 L112 57 L122 63 L132 57 L142 63 L152 57 L162 63" stroke="#06B6D4" stroke-width="1.5"/>
-            
-            <!-- Shopping / Catalog Cargo Dropping into Bed (Filling Effect) -->
-            <g class="cargo-box-1">
-                <rect x="68" y="38" width="24" height="18" rx="3" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.5"/>
-                <path d="M68 47 H92" stroke="#FFFFFF" stroke-width="1"/>
-            </g>
-            <g class="cargo-box-2">
-                <rect x="100" y="38" width="24" height="18" rx="3" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
-                <path d="M100 47 H124" stroke="#FFFFFF" stroke-width="1"/>
-            </g>
-            <g class="cargo-box-3">
-                <rect x="132" y="38" width="24" height="18" rx="3" fill="#EC4899" stroke="#FFFFFF" stroke-width="1.5"/>
-                <path d="M132 47 H156" stroke="#FFFFFF" stroke-width="1"/>
-            </g>
-            
-            <!-- Rotating Wheels -->
-            <g transform="translate(36, 70)">
-                <circle cx="0" cy="0" r="9" fill="#374151" stroke="#111827" stroke-width="2.5"/>
-                <circle cx="0" cy="0" r="3.5" fill="#F3F4F6"/>
-                <line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-                <line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-            </g>
-            <g transform="translate(86, 70)">
-                <circle cx="0" cy="0" r="9" fill="#374151" stroke="#111827" stroke-width="2.5"/>
-                <circle cx="0" cy="0" r="3.5" fill="#F3F4F6"/>
-                <line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-                <line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-            </g>
-            <g transform="translate(142, 70)">
-                <circle cx="0" cy="0" r="9" fill="#374151" stroke="#111827" stroke-width="2.5"/>
-                <circle cx="0" cy="0" r="3.5" fill="#F3F4F6"/>
-                <line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-                <line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFFFF" stroke-width="1.5" class="wheel-spoke"/>
-            </g>
-        </g>
-    </svg>
-    <div style="font-family: 'Poppins', sans-serif; font-weight: 700; color: #B45309; margin-top: 8px; text-transform: uppercase; letter-spacing: 1.5px; font-size: 0.88rem;">
-        🚚 Loading Catalog Payload & Filling Truck...
-    </div>
+# 3. TRUCK ART HEADER HTML (Unindented to prevent markdown pre/code bug)
+HEADER_HTML = """<div class="truck-header-card">
+<div class="truck-art-border"></div>
+<div class="brand-wrapper">
+<svg width="130" height="85" viewBox="0 0 170 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M15 70 H55 V25 H35 L20 42 L15 70 Z" fill="#FF9933" stroke="#1E293B" stroke-width="2.5"/>
+<path d="M22 45 H35 V32 L26 42 Z" fill="#FFFDF5" stroke="#1E293B" stroke-width="2"/>
+<rect x="55" y="18" width="100" height="52" rx="4" fill="#0F766E" stroke="#1E293B" stroke-width="2.5"/>
+<path d="M60 24 L70 32 L80 24 L90 32 L100 24 L110 32 L120 24 L130 32 L140 24 L150 32" stroke="#E0115F" stroke-width="2.5"/>
+<path d="M60 64 L70 56 L80 64 L90 56 L100 64 L110 56 L120 64 L130 56 L140 64 L150 56" stroke="#FFD700" stroke-width="2.5"/>
+<rect x="68" y="34" width="22" height="20" rx="3" fill="#FF9933" stroke="#FFFDF5" stroke-width="2"/>
+<rect x="94" y="34" width="22" height="20" rx="3" fill="#FFD700" stroke="#FFFDF5" stroke-width="2"/>
+<rect x="120" y="34" width="22" height="20" rx="3" fill="#E0115F" stroke="#FFFDF5" stroke-width="2"/>
+<path d="M105 44 C102 39 98 41 105 35 C112 41 108 39 105 44 Z" fill="#E0115F"/>
+<circle cx="35" cy="74" r="10" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="35" cy="74" r="4" fill="#FFFDF5"/>
+<circle cx="85" cy="74" r="10" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="85" cy="74" r="4" fill="#FFFDF5"/>
+<circle cx="135" cy="74" r="10" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="135" cy="74" r="4" fill="#FFFDF5"/>
+<path d="M5 88 H165" stroke="#FF9933" stroke-width="3" stroke-dasharray="8 5" stroke-linecap="round"/>
+</svg>
+<div>
+<div class="brand-title-text">C 2 C</div>
+<div class="horn-ok-badge">🪷 MĀL GĀDI • CATALOG CARRIER</div>
 </div>
-"""
+</div>
+</div>"""
 
-# --- HEADER WITH TRUCK ART CATALOG LOADING LOGO ---
-st.markdown("""
-<div class="brand-container">
-    <svg width="110" height="75" viewBox="0 0 160 110" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M15 65 H55 V25 H35 L20 40 L15 65 Z" fill="#D97706" stroke="#92400E" stroke-width="2"/>
-        <path d="M22 42 H35 V30 L26 40 Z" fill="#FEF3C7" stroke="#D97706" stroke-width="1.5"/>
-        
-        <rect x="55" y="20" width="90" height="45" rx="4" fill="#1F2937" stroke="#111827" stroke-width="2"/>
-        
-        <path d="M60 25 L70 35 L80 25 L90 35 L100 25 L110 35 L120 25 L130 35 L140 25" stroke="#EC4899" stroke-width="2" stroke-linecap="round"/>
-        <path d="M60 60 L70 50 L80 60 L90 50 L100 60 L110 50 L120 60 L130 50 L140 60" stroke="#06B6D4" stroke-width="2" stroke-linecap="round"/>
-        
-        <rect x="68" y="32" width="22" height="18" rx="2" fill="#F59E0B" stroke="#FFFFFF" stroke-width="1.5"/>
-        <rect x="94" y="32" width="22" height="18" rx="2" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5"/>
-        <rect x="120" y="32" width="20" height="18" rx="2" fill="#6366F1" stroke="#FFFFFF" stroke-width="1.5"/>
-        
-        <path d="M105 45 C102 40 98 42 105 36 C112 42 108 40 105 45 Z" fill="#EC4899"/>
-        
-        <circle cx="35" cy="68" r="10" fill="#374151" stroke="#111827" stroke-width="3"/>
-        <circle cx="35" cy="68" r="4" fill="#F3F4F6"/>
-        
-        <circle cx="80" cy="68" r="10" fill="#374151" stroke="#111827" stroke-width="3"/>
-        <circle cx="80" cy="68" r="4" fill="#F3F4F6"/>
-        
-        <circle cx="125" cy="68" r="10" fill="#374151" stroke="#111827" stroke-width="3"/>
-        <circle cx="125" cy="68" r="4" fill="#F3F4F6"/>
-        
-        <path d="M5 82 H155" stroke="#D97706" stroke-width="3" stroke-dasharray="6 4" stroke-linecap="round"/>
-    </svg>
-    
-    <div>
-        <div class="brand-title">C 2 C</div>
-        <div class="brand-badge">Goods & Catalog Carrier</div>
-    </div>
+st.markdown(HEADER_HTML, unsafe_allow_html=True)
+
+# 4. ANIMATED DRIVING TRUCK HTML
+ANIMATED_TRUCK_HTML = """<div style="background: #FFFDF5; border: 3px solid #1E293B; border-radius: 12px; padding: 20px; text-align: center; margin: 20px 0; box-shadow: 5px 5px 0px #1E293B;">
+<style>
+@keyframes driveBounce { 0% { transform: translateY(0px); } 50% { transform: translateY(-3px); } 100% { transform: translateY(0px); } }
+@keyframes rotateSpokes { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+@keyframes fillCargoDrop { 0% { opacity: 0; transform: translateY(-18px) scale(0.6); } 40% { opacity: 1; transform: translateY(0px) scale(1); } 100% { opacity: 1; transform: translateY(0px) scale(1); } }
+@keyframes roadDash { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -24; } }
+.truck-chassis { animation: driveBounce 0.4s infinite ease-in-out; }
+.wheel-spoke { transform-box: fill-box; transform-origin: center; animation: rotateSpokes 0.5s infinite linear; }
+.road-line-anim { animation: roadDash 0.25s infinite linear; }
+.cargo-box-1 { animation: fillCargoDrop 1.2s infinite ease-out; }
+.cargo-box-2 { animation: fillCargoDrop 1.2s infinite ease-out 0.4s; }
+.cargo-box-3 { animation: fillCargoDrop 1.2s infinite ease-out 0.8s; }
+</style>
+<svg width="240" height="110" viewBox="0 0 200 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 82 H190" stroke="#FF9933" stroke-width="3.5" stroke-dasharray="8 6" class="road-line-anim" stroke-linecap="round"/>
+<g class="truck-chassis">
+<path d="M18 68 H58 V32 H38 L24 45 L18 68 Z" fill="#FF9933" stroke="#1E293B" stroke-width="2"/>
+<path d="M26 47 H38 V36 L30 45 Z" fill="#FFFDF5" stroke="#1E293B" stroke-width="1.5"/>
+<rect x="58" y="26" width="115" height="42" rx="4" fill="#0F766E" stroke="#1E293B" stroke-width="2"/>
+<path d="M62 31 L72 37 L82 31 L92 37 L102 31 L112 37 L122 31 L132 37 L142 31 L152 37 L162 31" stroke="#E0115F" stroke-width="2"/>
+<path d="M62 63 L72 57 L82 63 L92 57 L102 63 L112 57 L122 63 L132 57 L142 63 L152 57 L162 63" stroke="#FFD700" stroke-width="2"/>
+<g class="cargo-box-1">
+<rect x="68" y="38" width="24" height="18" rx="3" fill="#FF9933" stroke="#FFFDF5" stroke-width="1.5"/>
+<path d="M68 47 H92" stroke="#FFFDF5" stroke-width="1"/>
+</g>
+<g class="cargo-box-2">
+<rect x="100" y="38" width="24" height="18" rx="3" fill="#FFD700" stroke="#FFFDF5" stroke-width="1.5"/>
+<path d="M100 47 H124" stroke="#FFFDF5" stroke-width="1"/>
+</g>
+<g class="cargo-box-3">
+<rect x="132" y="38" width="24" height="18" rx="3" fill="#E0115F" stroke="#FFFDF5" stroke-width="1.5"/>
+<path d="M132 47 H156" stroke="#FFFDF5" stroke-width="1"/>
+</g>
+<g transform="translate(36, 70)">
+<circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="0" cy="0" r="3.5" fill="#FFFDF5"/>
+<line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+<line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+</g>
+<g transform="translate(86, 70)">
+<circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="0" cy="0" r="3.5" fill="#FFFDF5"/>
+<line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+<line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+</g>
+<g transform="translate(142, 70)">
+<circle cx="0" cy="0" r="9" fill="#1E293B" stroke="#FFD700" stroke-width="2.5"/>
+<circle cx="0" cy="0" r="3.5" fill="#FFFDF5"/>
+<line x1="-7" y1="0" x2="7" y2="0" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+<line x1="0" y1="-7" x2="0" y2="7" stroke="#FFFDF5" stroke-width="1.5" class="wheel-spoke"/>
+</g>
+</g>
+</svg>
+<div style="font-family: 'Poppins', sans-serif; font-weight: 800; color: #1E293B; margin-top: 8px; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9rem;">
+🚚 CHALO! LOADING CATALOG PAYLOAD & FILLING TRUCK...
 </div>
-""", unsafe_allow_html=True)
+</div>"""
 
 # --- FILE UPLOADERS ---
 col1, col2 = st.columns(2)
@@ -259,17 +247,16 @@ with col2:
 
 st.markdown("---")
 
-# --- EXECUTION ENGINE WITH TRUCK FILLING ANIMATION ---
-if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
+# --- EXECUTION ENGINE ---
+if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_files:
     anim_placeholder = st.empty()
     anim_placeholder.markdown(ANIMATED_TRUCK_HTML, unsafe_allow_html=True)
     
     master_style_dict = {}
     
-    # 3. PARSE SELLER FILES
+    # 5. PARSE SELLER FILES
     for uploaded_seller in seller_files:
         try:
-            # CSV Format
             if uploaded_seller.name.endswith('.csv'):
                 df = pd.read_csv(uploaded_seller)
                 style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'style', 'id']), df.columns[0])
@@ -282,7 +269,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                                 master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
                 continue
 
-            # Excel Format
             xls = pd.ExcelFile(uploaded_seller)
             sheet_name = 'Style Sheet' if 'Style Sheet' in xls.sheet_names else ('Styles' if 'Styles' in xls.sheet_names else xls.sheet_names[0])
             df_raw = pd.read_excel(uploaded_seller, sheet_name=sheet_name, header=None)
@@ -305,7 +291,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                     
                     if sid not in master_style_dict: master_style_dict[sid] = {}
                     
-                    # Attribute column fallback (Col 10 = Name, Col 11 = Current, Col 12 = Correct/New)
                     if 10 < len(row) and pd.notna(row[10]):
                         attr_name = str(row[10]).strip()
                         val_curr_spec = row[11] if 11 < len(row) else None
@@ -320,7 +305,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                         if attr_name and target_val:
                             master_style_dict[sid][map_attribute_header(attr_name)] = target_val
 
-                    # Paired Columns (Display Name, List View, Product Details, Fit, Care)
                     paired_cols = [(4, 5, 4), (6, 7, 6), (8, 9, 8), (13, 14, 13), (15, 16, 15)]
                     for pair_curr, pair_new, header_idx in paired_cols:
                         if header_idx < df_raw.shape[1]:
@@ -340,7 +324,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                                     master_style_dict[sid][map_attribute_header(attr_header)] = final_v
 
             else:
-                # Simple 1-row Header Table
                 df_simple = pd.read_excel(uploaded_seller, sheet_name=sheet_name)
                 style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'style', 'id']), df_simple.columns[0])
                 
@@ -358,7 +341,7 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
         except Exception as e:
             st.error(f"Error parsing {uploaded_seller.name}: {e}")
 
-    # 4. INJECT INTO TEMPLATES & AUDIT LOG
+    # 6. INJECT INTO TEMPLATES & AUDIT LOG
     zip_buffer = io.BytesIO()
     total_mapped = 0
     total_branded = 0
@@ -390,7 +373,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                                 if mapped_attr in col_map:
                                     final_val = str(val).strip()
                                     
-                                    # Auto-Brand Injector
                                     if mapped_attr == 'productdisplayname' and brand_col_idx:
                                         target_brand = str(ws.cell(row=row, column=brand_col_idx).value).strip()
                                         if target_brand and target_brand.lower() not in ['none', 'nan', '']:
@@ -401,7 +383,6 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
                                     ws.cell(row=row, column=col_map[mapped_attr]).value = final_val
                                     mapped_count += 1
                                     
-                                    # Audit trail
                                     orig_col_header = ws.cell(row=1, column=col_map[mapped_attr]).value
                                     audit_records.append({
                                         "Template File": uploaded_template.name,
@@ -418,22 +399,20 @@ if st.button("🚚📦 Run C 2 C Mapping") and template_files and seller_files:
             wb.save(wb_buffer)
             zip_file.writestr(f"C2C_Mapped_{uploaded_template.name}", wb_buffer.getvalue())
 
-    # Clear animation after processing
+    # Clear animation container
     anim_placeholder.empty()
 
-    # 5. RESULTS & DOWNLOAD
+    # 7. RESULTS & AUDIT TABLE DISPLAY
     st.success(f"✅ Extracted updates for **{len(master_style_dict)}** unique style IDs from seller files.")
     st.info(f"🎯 **C 2 C Mapping Complete!** Successfully filled **{total_mapped}** attribute cells into catalog template(s).")
     if total_branded > 0:
         st.warning(f"🛡️ Auto-injected Brand Name into **{total_branded}** titles.")
 
-    # Interactive Audit Log
     if audit_records:
         df_audit = pd.DataFrame(audit_records)
         with st.expander("📊 Detailed Mapping Audit Log (Line-by-Line)", expanded=True):
             st.dataframe(df_audit, use_container_width=True)
 
-    # Download Actions
     if len(template_files) == 1:
         wb_buffer.seek(0)
         st.download_button(
