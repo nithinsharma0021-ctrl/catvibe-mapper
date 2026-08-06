@@ -25,7 +25,7 @@ html, body, [class*="css"] {
     border: 3px solid #1E293B;
     border-radius: 14px;
     padding: 24px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     box-shadow: 6px 6px 0px #1E293B;
     position: relative;
     overflow: hidden;
@@ -82,15 +82,6 @@ html, body, [class*="css"] {
     border: 2px solid #1E293B;
     box-shadow: 3px 3px 0px #1E293B;
     margin-top: 8px;
-}
-
-/* Upload Card Styling */
-div[data-testid="stFileUploader"] {
-    background-color: #FFFFFF;
-    border: 2px solid #1E293B;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 4px 4px 0px #E2E8F0;
 }
 
 /* Truck Bumper Button */
@@ -228,7 +219,7 @@ ANIMATED_TRUCK_HTML = """<div style="background: #FFFDF5; border: 3px solid #1E2
 </div>
 </div>"""
 
-# --- FILE UPLOADERS WITH EXPLICIT KEYS ---
+# --- FILE UPLOADERS ---
 col1, col2 = st.columns(2)
 
 with col1:
@@ -236,7 +227,7 @@ with col1:
         "1. Target Myntra Templates (.xlsx)", 
         type=["xlsx"], 
         accept_multiple_files=True,
-        key="template_uploader_key"
+        key="tmpl_up"
     )
 
 with col2:
@@ -244,7 +235,7 @@ with col2:
         "2. Source Seller Files (.xlsx, .csv)", 
         type=["xlsx", "csv"], 
         accept_multiple_files=True,
-        key="seller_uploader_key"
+        key="sell_up"
     )
 
 st.markdown("---")
