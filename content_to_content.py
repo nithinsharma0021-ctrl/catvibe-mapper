@@ -122,7 +122,7 @@ def map_attribute_header(raw_attr):
     raw = str(raw_attr).lower().strip()
     if 'display' in raw or 'title' in raw or raw == 'style name': return 'productdisplayname'
     if 'list view' in raw: return 'listviewname'
-    if 'product detail' in raw: return 'productdetails'
+    if 'product detail' in raw or 'description' in raw: return 'productdetails'
     if 'size' in raw and 'fit' in raw: return 'sizeandfitdescription'
     if 'material' in raw and 'care' in raw: return 'materialcaredescription'
     if 'colour' in raw or 'color' in raw: return 'colour'
@@ -138,7 +138,7 @@ def normalize_col(name):
     name = str(name).strip().lower()
     return re.sub(r'[^a-z0-9]', '', name)
 
-# 3. TRUCK ART HEADER HTML (Unindented to prevent markdown pre/code bug)
+# 3. TRUCK ART HEADER HTML
 HEADER_HTML = """<div class="truck-header-card">
 <div class="truck-art-border"></div>
 <div class="brand-wrapper">
@@ -259,7 +259,7 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
         try:
             if uploaded_seller.name.endswith('.csv'):
                 df = pd.read_csv(uploaded_seller)
-                style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'style', 'id']), df.columns[0])
+                style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df.columns[0])
                 for _, row in df.iterrows():
                     sid = clean_id(row[style_col])
                     if sid and sid != 'nan':
@@ -325,7 +325,7 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
 
             else:
                 df_simple = pd.read_excel(uploaded_seller, sheet_name=sheet_name)
-                style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'style', 'id']), df_simple.columns[0])
+                style_col = next((c for c in df_simple.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df_simple.columns[0])
                 
                 for _, row in df_simple.iterrows():
                     sid = clean_id(row[style_col])
