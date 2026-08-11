@@ -4,7 +4,6 @@ import openpyxl
 import re
 import io
 import zipfile
-import gc
 import warnings
 
 warnings.filterwarnings('ignore', category=UserWarning, module='openpyxl')
@@ -20,17 +19,19 @@ html, body, [class*="css"] {
     background-color: #FAFAFA;
 }
 
+/* Indian Truck Art Header Container */
 .truck-header-card {
     background: #FFFDF5;
     border: 3px solid #1E293B;
     border-radius: 14px;
     padding: 24px;
-    margin-bottom: 28px;
+    margin-bottom: 24px;
     box-shadow: 6px 6px 0px #1E293B;
     position: relative;
     overflow: hidden;
 }
 
+/* Top Truck Art Chevron Bar */
 .truck-art-border {
     height: 10px;
     background: repeating-linear-gradient(
@@ -64,6 +65,7 @@ html, body, [class*="css"] {
     letter-spacing: 2px;
 }
 
+/* Horn OK Please Style Badge */
 .horn-ok-badge {
     display: inline-flex;
     align-items: center;
@@ -82,6 +84,7 @@ html, body, [class*="css"] {
     margin-top: 8px;
 }
 
+/* Truck Bumper Button */
 div.stButton > button:first-child {
     background: #FF9933;
     color: #1E293B;
@@ -237,43 +240,26 @@ with col2:
 
 st.markdown("---")
 
-# --- EXECUTION ENGINE WITH MEMORY OPTIMIZATION ---
+# --- EXECUTION ENGINE ---
 if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_files:
     anim_placeholder = st.empty()
     anim_placeholder.markdown(ANIMATED_TRUCK_HTML, unsafe_allow_html=True)
     
     master_style_dict = {}
     
-    # PARSE SELLER FILES
+    # 5. PARSE SELLER FILES
     for uploaded_seller in seller_files:
         try:
             if uploaded_seller.name.endswith('.csv'):
                 df = pd.read_csv(uploaded_seller)
                 style_col = next((c for c in df.columns if normalize_col(c) in ['styleid', 'styleids', 'style', 'id']), df.columns[0])
-                
-                # --- NEW: Key-Value Format Detection ---
-                attr_col = next((c for c in df.columns if 'attribute' in str(c).lower() or 'field' in str(c).lower()), None)
-                val_col = next((c for c in df.columns if 'correct' in str(c).lower() or 'value' in str(c).lower() or 'new' in str(c).lower() and c != attr_col), None)
-                is_kv_format = bool(attr_col and val_col and attr_col != val_col)
-                # ---------------------------------------
-
                 for _, row in df.iterrows():
                     sid = clean_id(row[style_col])
                     if sid and sid != 'nan':
                         if sid not in master_style_dict: master_style_dict[sid] = {}
-                        
-                        if is_kv_format:
-                            # Map Long Format (e.g., Attribute -> Correct Attribute)
-                            attr_name = str(row[attr_col]).strip()
-                            attr_val = str(row[val_col]).strip()
-                            if pd.notna(row[val_col]) and attr_val.lower() != 'nan':
-                                master_style_dict[sid][map_attribute_header(attr_name)] = attr_val
-                        else:
-                            # Map Wide Format (Standard Headers)
-                            for col in df.columns:
-                                if col != style_col and pd.notna(row[col]):
-                                    master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
-                del df
+                        for col in df.columns:
+                            if col != style_col and pd.notna(row[col]):
+                                master_style_dict[sid][map_attribute_header(col)] = str(row[col]).strip()
                 continue
 
             xls = pd.ExcelFile(uploaded_seller)
@@ -303,9 +289,13 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
                         val_curr_spec = row[11] if 11 < len(row) else None
                         val_new_spec = row[12] if 12 < len(row) else None
                         
-                        # Fix applied: Always try new input first, then fallback to current
-                        target_val = str(val_new_spec).strip() if pd.notna(val_new_spec) and str(val_new_spec).strip().lower() not in ['nan', ''] else str(val_curr_spec).strip() if pd.notna(val_curr_spec) else None
-                        if attr_name and target_val and target_val.lower() != 'nan':
+                        target_val = None
+                        if pd.notna(val_new_spec) and str(val_new_spec).strip().lower() not in ['nan', '']:
+                            target_val = str(val_new_spec).strip()
+                        elif pd.notna(val_curr_spec) and str(val_curr_spec).strip().lower() not in ['nan', '']:
+                            target_val = str(val_curr_spec).strip()
+                            
+                        if attr_name and target_val:
                             master_style_dict[sid][map_attribute_header(attr_name)] = target_val
 
                     paired_cols = [(4, 5, 4), (6, 7, 6), (8, 9, 8), (13, 14, 13), (15, 16, 15)]
@@ -317,8 +307,13 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
                                 v_new = row[pair_new] if pair_new < len(row) else None
                                 v_curr = row[pair_curr] if pair_curr < len(row) else None
                                 
-                                final_v = str(v_new).strip() if pd.notna(v_new) and str(v_new).strip().lower() not in ['nan', ''] else str(v_curr).strip() if pd.notna(v_curr) else None
-                                if attr_header and final_v and final_v.lower() != 'nan':
+                                final_v = None
+                                if pd.notna(v_new) and str(v_new).strip().lower() not in ['nan', '']:
+                                    final_v = str(v_new).strip()
+                                elif pd.notna(v_curr) and str(v_curr).strip().lower() not in ['nan', '']:
+                                    final_v = str(v_curr).strip()
+                                    
+                                if attr_header and final_v:
                                     master_style_dict[sid][map_attribute_header(attr_header)] = final_v
 
             else:
@@ -336,13 +331,10 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
                             if val and val.lower() != 'nan':
                                 master_style_dict[sid][map_attribute_header(col)] = val
 
-            del df_raw
-            gc.collect()
-
         except Exception as e:
             st.error(f"Error parsing {uploaded_seller.name}: {e}")
 
-    # INJECT INTO TEMPLATES & AUDIT LOG
+    # 6. INJECT INTO TEMPLATES & AUDIT LOG
     zip_buffer = io.BytesIO()
     total_mapped = 0
     total_branded = 0
@@ -399,12 +391,11 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
             wb_buffer = io.BytesIO()
             wb.save(wb_buffer)
             zip_file.writestr(f"C2C_Mapped_{uploaded_template.name}", wb_buffer.getvalue())
-            
-            wb.close()
-            gc.collect()
 
+    # Clear animation container
     anim_placeholder.empty()
 
+    # 7. RESULTS & AUDIT TABLE DISPLAY
     st.success(f"✅ Extracted updates for **{len(master_style_dict)}** unique style IDs from seller files.")
     st.info(f"🎯 **C 2 C Mapping Complete!** Successfully filled **{total_mapped}** attribute cells into catalog template(s).")
     if total_branded > 0:
@@ -430,5 +421,3 @@ if st.button("🚚💨 CHALO! RUN C 2 C MAPPING") and template_files and seller_
             file_name="C2C_Mapped_Templates.zip",
             mime="application/zip"
         )
-    
-    gc.collect()
